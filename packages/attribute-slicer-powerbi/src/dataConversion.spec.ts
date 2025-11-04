@@ -47,11 +47,11 @@ import DataView = powerbiVisualsApi.DataView;
 
 describe("dataConversion", () => {
 	describe("convert", () => {
-		describe("data with only categories", () => {
-			it("should convert the categories correctly", () => {
-				const { options, categories } = categoriesOnly();
-				const converted: IAttributeSlicerVisualData = convert(
-					options.dataViews[0],
+                describe("data with only categories", () => {
+                        it("should convert the categories correctly", () => {
+                                const { options, categories } = categoriesOnly();
+                                const converted: IAttributeSlicerVisualData = convert(
+                                        options.dataViews[0],
 				);
 				const catNames: string[] = converted.items.map(
 					(n: ISlicerItem) => n.text,
@@ -73,17 +73,67 @@ describe("dataConversion", () => {
 					options.dataViews[0],
 				);
 
-				converted.items.forEach((n: ISlicerItem) => {
-					expect(n.color).to.be.equal("#ccc"); // The default color
-					expect(n.id).to.not.be.eq(undefined, "Id should be defined");
+                                converted.items.forEach((n: ISlicerItem) => {
+                                        expect(n.color).to.be.equal("#ccc"); // The default color
+                                        expect(n.id).to.not.be.eq(undefined, "Id should be defined");
 
-					// None of the items should have any of the below since there is no value data
-					expect(n.value).to.be.oneOf([0, undefined]);
-					expect(n.renderedValue).to.be.oneOf([0, undefined]);
-					expect(n.valueSegments).to.be.oneOf([0, undefined]);
-				});
-			});
-		});
+                                        // None of the items should have any of the below since there is no value data
+                                        expect(n.value).to.be.oneOf([0, undefined]);
+                                        expect(n.renderedValue).to.be.oneOf([0, undefined]);
+                                        expect(n.valueSegments).to.be.oneOf([0, undefined]);
+                                });
+                        });
+
+                        it("should attach sort values when a sort column is present", () => {
+                                const dataView: DataView = <DataView>(<unknown>{
+                                        metadata: {
+                                                columns: [
+                                                        {
+                                                                roles: { Category: true },
+                                                                displayName: "Category",
+                                                                queryName: "Table.Category",
+                                                        },
+                                                        {
+                                                                roles: { SortBy: true },
+                                                                displayName: "Sort",
+                                                                queryName: "Table.Sort",
+                                                                sort: 1,
+                                                        },
+                                                ],
+                                        },
+                                        categorical: {
+                                                categories: [
+                                                        {
+                                                                source: {
+                                                                        roles: { Category: true },
+                                                                        displayName: "Category",
+                                                                        queryName: "Table.Category",
+                                                                },
+                                                                values: ["B", "A"],
+                                                        },
+                                                        {
+                                                                source: {
+                                                                        roles: { SortBy: true },
+                                                                        displayName: "Sort",
+                                                                        queryName: "Table.Sort",
+                                                                },
+                                                                values: [2, 1],
+                                                        },
+                                                ],
+                                                values: [],
+                                        },
+                                });
+
+                                const converted: IAttributeSlicerVisualData = convert(dataView);
+                                expect(converted.items.map((n: ISlicerItem) => n.text)).to.deep.equal([
+                                        "B",
+                                        "A",
+                                ]);
+                                expect(
+                                        converted.items.map((n: ISlicerItem) => n.sortValue),
+                                ).to.deep.equal([2, 1]);
+                        });
+                });
 		describe("data with categories and values (no series)", () => {
 			it("should convert the categories correctly", () => {
 				const { options, categories } = categoriesAndValues();

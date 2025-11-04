@@ -68,11 +68,16 @@ export function slicerItemTemplate(
 	const itemUi = select(BASE_ITEM_TEMPLATE());
 
 	// use jquery to html the match text to prevent xss
-	itemUi.select(".text").text(pretty(text));
+        itemUi.select(".text").text(pretty(text));
 
-	itemUi
-		.select(".category-container")
-		.attr("title", pretty(text))
+        const tooltipParts: string[] = [pretty(text)];
+        if (item.sortValue !== undefined && item.sortValue !== null) {
+                tooltipParts.push(pretty(item.sortValue));
+        }
+
+        itemUi
+                .select(".category-container")
+                .attr("title", tooltipParts.join(" — "))
 		.attr(
 			"style",
 			`display:inline-block;overflow:hidden;max-width:${sizes.category}%;${

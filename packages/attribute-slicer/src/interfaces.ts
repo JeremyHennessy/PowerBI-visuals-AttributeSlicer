@@ -45,20 +45,25 @@ export interface IItemReference {
  * Represents an item in the slicer
  */
 export interface ISlicerItem extends IItemReference {
-	/**
-	 * The color of the item
-	 */
-	color?: string;
+        /**
+         * The color of the item
+         */
+        color?: string;
 
-	/**
-	 * The raw value of this item
-	 */
-	value: number | string | Date;
+        /**
+         * The raw value of this item
+         */
+        value: number | string | Date;
 
-	/**
-	 * The segments that make up this items value, the total of the widths must === 100
-	 */
-	valueSegments?: ISlicerValueSegment[];
+        /**
+         * Optional value attached to the item that can be used for sorting.
+         */
+        sortValue?: string | number | boolean | Date;
+
+        /**
+         * The segments that make up this items value, the total of the widths must === 100
+         */
+        valueSegments?: ISlicerValueSegment[];
 
 	/**
 	 * The percentage value that should be displayed (0 - 100)

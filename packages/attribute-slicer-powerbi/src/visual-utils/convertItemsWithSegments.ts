@@ -34,6 +34,7 @@ import {
 } from "../interfaces";
 import ISelectionIdBuilder = powerbiVisualsApi.visuals.ISelectionIdBuilder;
 import PrimitiveValue = powerbiVisualsApi.PrimitiveValue;
+import DataViewCategoryColumn = powerbiVisualsApi.DataViewCategoryColumn;
 
 import lodashGet from "lodash.get";
 import colors from "./colors";
@@ -54,10 +55,16 @@ export function convertItemsWithSegments(
 ) {
 	"use strict";
 	let items: ItemWithValueSegments[];
-	const dvCats = lodashGet(dataView, "categorical.categories");
-	const categories = <PrimitiveValue[]>(
-		lodashGet(dataView, "categorical.categories[0].values")
-	);
+        const dvCats: DataViewCategoryColumn[] =
+                lodashGet(dataView, "categorical.categories") || [];
+        const categoryColumn: DataViewCategoryColumn | undefined = dvCats.find(
+                (column: DataViewCategoryColumn) =>
+                        !!lodashGet(column, "source.roles.Category"),
+        );
+        const categories = <PrimitiveValue[]>(
+                (categoryColumn && categoryColumn.values) ||
+                lodashGet(dataView, "categorical.categories[0].values")
+        );
 	const values = lodashGet(dataView, "categorical.values");
 	if (categories) {
 		settings = <any>settings || {};
@@ -91,11 +98,13 @@ export function convertItemsWithSegments(
 
 		// Iterate through each of the rows (or categories)
 		items = categories.map((category, rowIdx) => {
-			const id = createIdBuilder
-				? createIdBuilder()
-						.withCategory(dvCats[0], rowIdx)
-						.createSelectionId()
-				: rowIdx;
+                        const categoryForIdentity: DataViewCategoryColumn =
+                                categoryColumn || dvCats[0];
+                        const id = createIdBuilder
+                                ? createIdBuilder()
+                                                .withCategory(categoryForIdentity, rowIdx)
+                                                .createSelectionId()
+                                : rowIdx;
 			let rowTotal = 0;
 			let segments: any;
 

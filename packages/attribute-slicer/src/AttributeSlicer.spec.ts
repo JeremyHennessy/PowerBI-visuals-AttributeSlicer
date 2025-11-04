@@ -142,14 +142,42 @@ describe("AttributeSlicer", () => {
 			expect(vList.items.length).to.eq(simpleData.length);
 			expect(vList.items).to.be.deep.equal(simpleData);
 		});
-		it("should clear selection when the data is changed", () => {
-			const { instance } = createInstance();
-			instance.data = simpleData;
-			instance.selectedItems = simpleData.slice(1, 3);
-			instance.data = createData("B", "C");
-			expect(instance.selectedItems).to.deep.equal([]);
-		});
-	});
+                it("should clear selection when the data is changed", () => {
+                        const { instance } = createInstance();
+                        instance.data = simpleData;
+                        instance.selectedItems = simpleData.slice(1, 3);
+                        instance.data = createData("B", "C");
+                        expect(instance.selectedItems).to.deep.equal([]);
+                });
+
+                it("should maintain sort order based on sortValue when data updates", () => {
+                        const { instance } = createInstance();
+                        const initialData = createData("B", "A");
+                        initialData[0].sortValue = 2;
+                        initialData[1].sortValue = 1;
+
+                        instance.data = initialData.slice(0);
+                        instance.sort("sortValue");
+
+                        expect(instance.data.map(item => item.text)).to.deep.equal([
+                                "A",
+                                "B",
+                        ]);
+
+                        const updatedData = createData("C", "B", "A");
+                        updatedData[0].sortValue = 3;
+                        updatedData[1].sortValue = 2;
+                        updatedData[2].sortValue = 1;
+
+                        instance.data = updatedData.slice(0);
+
+                        expect(instance.data.map(item => item.text)).to.deep.equal([
+                                "A",
+                                "B",
+                                "C",
+                        ]);
+                });
+        });
 
 	describe("prettyPrintValue", () => {
 		it("should display '0' for 0", () => {
