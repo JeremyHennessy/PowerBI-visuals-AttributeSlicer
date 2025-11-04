@@ -63,6 +63,8 @@ import buildColumnTarget from "./visual-utils/buildColumnTarget";
 import VisualUpdateOptions = powerbiVisualsApi.extensibility.visual.VisualUpdateOptions;
 import VisualUpdateType = powerbiVisualsApi.VisualUpdateType;
 import DataView = powerbiVisualsApi.DataView;
+import DataViewCategoryColumn = powerbiVisualsApi.DataViewCategoryColumn;
+import DataViewMetadataColumn = powerbiVisualsApi.DataViewMetadataColumn;
 import IValueFormatter = valueFormatter.IValueFormatter;
 import IVisualEventService = powerbiVisualsApi.extensibility.IVisualEventService;
 
@@ -287,16 +289,18 @@ export class AttributeSlicerVisual
 					computeRenderedValues(<any>this.mySlicer.data);
 
 					this.mySlicer.refresh();
-				} else {
-					this.mySlicer.data = filteredData;
+                                } else {
+                                        this.mySlicer.data = filteredData;
 
-					// Restore selection
-					this.mySlicer.selectedItems = (pbiState.selectedItems || []).slice(0); // Make a copy
+                                        // Restore selection
+                                        this.mySlicer.selectedItems = (pbiState.selectedItems || []).slice(0); // Make a copy
 
-					delete this.loadDeferred;
-				}
+                                        delete this.loadDeferred;
+                                }
 
-				const columnNames: string[] = [];
+                                this.applySortSettings(dv);
+
+                                const columnNames: string[] = [];
 				lodashForown(
 					lodashGet(dv, "categorical.categories"),
 					(value, key: any) => {
@@ -373,23 +377,62 @@ export class AttributeSlicerVisual
 	 * value bar width calculations.
 	 * @param dv
 	 */
-	private zeroEmptyItems(dv: powerbiVisualsApi.DataView) {
-		const categories = dv.categorical.categories[0].values;
-		for (let i = 0; i < categories.length; i++) {
-			if (!categories[i] || categories[i].toString().trim().length === 0) {
-				for (const dataColumn of dv.categorical.values) {
-					if (dataColumn.values && dataColumn.values[i]) {
-						dataColumn.values[i] = 0;
-					}
-				}
-			}
-		}
-	}
+        private zeroEmptyItems(dv: powerbiVisualsApi.DataView) {
+                const categories = dv.categorical.categories[0].values;
+                for (let i = 0; i < categories.length; i++) {
+                        if (!categories[i] || categories[i].toString().trim().length === 0) {
+                                for (const dataColumn of dv.categorical.values) {
+                                        if (dataColumn.values && dataColumn.values[i]) {
+                                                dataColumn.values[i] = 0;
+                                        }
+                                }
+                        }
+                }
+        }
 
-	/**
-	 * Listener for when the selection changes
-	 */
-	private onSelectionChanged(selectedItems: IItemReference[]) {
+        private applySortSettings(dv: powerbiVisualsApi.DataView): void {
+                if (!this.mySlicer) {
+                        return;
+                }
+
+                const sortInfo = this.getSortInfo(dv);
+                if (sortInfo) {
+                        this.mySlicer.sort(sortInfo.property, sortInfo.descending);
+                } else {
+                        this.mySlicer.sort(undefined);
+                }
+        }
+
+        private getSortInfo(
+                dv: powerbiVisualsApi.DataView,
+        ): { property: string; descending: boolean } | undefined {
+                const categoryColumns: DataViewCategoryColumn[] =
+                        (lodashGet(dv, "categorical.categories") as DataViewCategoryColumn[]) || [];
+                const sortColumn: DataViewCategoryColumn | undefined = categoryColumns.find(
+                        (column: DataViewCategoryColumn) =>
+                                !!lodashGet(column, "source.roles.SortBy"),
+                );
+
+                if (!sortColumn) {
+                        return undefined;
+                }
+
+                const metadataColumns: DataViewMetadataColumn[] =
+                        (lodashGet(dv, "metadata.columns") as DataViewMetadataColumn[]) || [];
+                const matchingMetadata: DataViewMetadataColumn | undefined = metadataColumns.find(
+                        (column: DataViewMetadataColumn) =>
+                                column.queryName === sortColumn.source.queryName,
+                );
+
+                const isDescending: boolean = !!matchingMetadata && matchingMetadata.sort === 2;
+
+                return { property: "sortValue", descending: isDescending };
+        }
+
+        /**
+         * Listener for when the selection changes
+         */
+        private onSelectionChanged(selectedItems: IItemReference[]) {
 		if (!this.isHandlingUpdate) {
 			log("onSelectionChanged");
 			const newIds = (selectedItems || []).map(n => n.id).sort();

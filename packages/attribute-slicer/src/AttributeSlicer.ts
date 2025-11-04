@@ -51,11 +51,6 @@ interface IDimensions {
 	height: number;
 }
 
-const naturalSort: (
-	a: unknown,
-	b: unknown,
-) => number = require("javascript-natural-sort");
-
 /**
  * Represents an advanced slicer to help slice through data
  */
@@ -148,10 +143,12 @@ export class AttributeSlicer {
 	private internalDimensions?: IDimensions;
 	private internalValueWidthPercentage: number = DEFAULT_VALUE_WIDTH;
 	private internalShowValues: boolean = false;
-	private internalShowSelections: boolean = true;
-	private internalFontSize: number = DEFAULT_TEXT_SIZE;
-	private internalSearchString: string = "";
-	private internalLoadingMoreData: boolean = false; // don't use this directly
+        private internalShowSelections: boolean = true;
+        private internalFontSize: number = DEFAULT_TEXT_SIZE;
+        private internalSearchString: string = "";
+        private internalLoadingMoreData: boolean = false; // don't use this directly
+        private internalSortProperty?: string;
+        private internalSortDescending: boolean = false;
 
 	/**
 	 * Updates the list height
@@ -658,13 +655,15 @@ export class AttributeSlicer {
 			this.search(this.searchString);
 		}
 
-		this.internalData = newData;
-		this.selectionManager.items = newData;
+                this.internalData = newData;
+                this.selectionManager.items = newData;
 
-		// Not necessary as performed in syncItemVisibility
-		// this.virtualList.setItems(newData);
+                this.applySort(false);
 
-		this.syncItemVisiblity(true);
+                // Not necessary as performed in syncItemVisibility
+                // this.virtualList.setItems(newData);
+
+                this.syncItemVisiblity(true);
 		this.updateSelectAllButtonState();
 
 		// If this is just setting data, we are not currently in a load cycle
@@ -846,13 +845,69 @@ export class AttributeSlicer {
 	/**j
 	 * Sorts the slicer
 	 */
-	public sort(sortProp: string, desc?: boolean): void {
-		this.data.sort((a: ISlicerItem, b: ISlicerItem) => {
-			const sortVal: number = naturalSort(a[sortProp], b[sortProp]);
+        public sort(sortProp?: string, desc?: boolean): void {
+                this.internalSortProperty = sortProp;
+                this.internalSortDescending = !!desc;
+                this.applySort(true);
+        }
 
-			return desc ? -1 * sortVal : sortVal;
-		});
-	}
+        private applySort(shouldUpdateUi: boolean = true): void {
+                if (!this.internalSortProperty || !this.internalData) {
+                        return;
+                }
+
+                const sortProp: string = this.internalSortProperty;
+                const descending: boolean = this.internalSortDescending;
+
+                this.internalData.sort((a: ISlicerItem, b: ISlicerItem) => {
+                        const left: unknown = lodashGet(a, sortProp);
+                        const right: unknown = lodashGet(b, sortProp);
+                        const sortVal: number = AttributeSlicer.compareSortValues(left, right);
+
+                        return descending ? -1 * sortVal : sortVal;
+                });
+
+                if (shouldUpdateUi) {
+                        this.syncItemVisiblity(true);
+                        this.refresh();
+                }
+        }
+
+        private static compareSortValues(left: unknown, right: unknown): number {
+                if (left === right) {
+                        return 0;
+                }
+
+                if (left === undefined || left === null) {
+                        return 1;
+                }
+
+                if (right === undefined || right === null) {
+                        return -1;
+                }
+
+                const leftDate: Date | undefined = left instanceof Date ? left : undefined;
+                const rightDate: Date | undefined = right instanceof Date ? right : undefined;
+                if (leftDate && rightDate) {
+                        return leftDate.getTime() - rightDate.getTime();
+                }
+
+                if (typeof left === "number" && typeof right === "number") {
+                        return left - right;
+                }
+
+                if (typeof left === "boolean" && typeof right === "boolean") {
+                        return Number(left) - Number(right);
+                }
+
+                const leftString: string = `${left}`;
+                const rightString: string = `${right}`;
+
+                return leftString.localeCompare(rightString, undefined, {
+                        numeric: true,
+                        sensitivity: "base",
+                });
+        }
 
 	/**
 	 * Listener for the list scrolling

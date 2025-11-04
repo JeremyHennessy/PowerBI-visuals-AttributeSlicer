@@ -65,31 +65,56 @@ export function converter(
 			catFormat = createCategoryFormatter(dataView);
 		}
 
-		const segmentColors: {
-			[key: string]: string;
-		} = calculateSegmentColorsFromData(dataView);
+                const segmentColors: {
+                        [key: string]: string;
+                } = calculateSegmentColorsFromData(dataView);
 
-		return <IAttributeSlicerVisualData>(<unknown>convertItemsWithSegments(
-			dataView,
-			(
-				dvCats: DataViewCategoryColumn[],
-				catIdx: number,
-				total: number,
-				selectionid: powerbiVisualsApi.visuals.ISelectionId,
-				valueSegments: IValueSegment[],
-			) => {
-				const item: ISlicerItem = createItem(
-					buildCategoryDisplay(dvCats, catIdx, catFormat),
-					total,
-					`${dvCats[0].values[catIdx]}`,
-					undefined,
-					"#ccc",
-				);
-				(valueSegments || []).forEach((segment: IValueSegment, i: number) => {
-					// Update the segments color to the ones pulled from the data, if it exists
-					segment.color = segmentColors[i] || segment.color;
-					segment.displayValue = valFormat.format(segment.value);
-				});
+                const categoricalColumns: DataViewCategoryColumn[] =
+                        lodashGet(dataView, "categorical.categories") || [];
+                const categoryColumns: DataViewCategoryColumn[] = getColumnsWithRole(
+                        categoricalColumns,
+                        "Category",
+                );
+                const sortByColumn: DataViewCategoryColumn | undefined =
+                        getFirstColumnWithRole(categoricalColumns, "SortBy");
+
+                return <IAttributeSlicerVisualData>(<unknown>convertItemsWithSegments(
+                        dataView,
+                        (
+                                dvCats: DataViewCategoryColumn[],
+                                catIdx: number,
+                                total: number,
+                                selectionid: powerbiVisualsApi.visuals.ISelectionId,
+                                valueSegments: IValueSegment[],
+                        ) => {
+                                const categoryDisplayColumns: DataViewCategoryColumn[] =
+                                        categoryColumns.length ? categoryColumns : dvCats;
+                                const identityColumn: DataViewCategoryColumn | undefined =
+                                        categoryDisplayColumns[0] || dvCats[0];
+                                const sortValue: PrimitiveValue | undefined = sortByColumn
+                                        ? sortByColumn.values && sortByColumn.values[catIdx]
+                                        : undefined;
+                                const item: ISlicerItem = createItem(
+                                        buildCategoryDisplay(
+                                                categoryDisplayColumns,
+                                                catIdx,
+                                                catFormat,
+                                        ),
+                                        total,
+                                        `${identityColumn && identityColumn.values
+                                                ? identityColumn.values[catIdx]
+                                                : dvCats[0] && dvCats[0].values
+                                                ? dvCats[0].values[catIdx]
+                                                : ""}`,
+                                        undefined,
+                                        "#ccc",
+                                        sortValue,
+                                );
+                                (valueSegments || []).forEach((segment: IValueSegment, i: number) => {
+                                        // Update the segments color to the ones pulled from the data, if it exists
+                                        segment.color = segmentColors[i] || segment.color;
+                                        segment.displayValue = valFormat.format(segment.value);
+                                });
 
 				return <ItemWithValueSegments>(<unknown>item);
 			},
@@ -134,36 +159,72 @@ export function calculateSegmentColorsFromData(
  * Builds the display string for the given category
  */
 export function buildCategoryDisplay(
-	cats: DataViewCategoryColumn[],
-	catIdx: number,
-	categoryFormatter?: valueFormatter.IValueFormatter,
+        cats: DataViewCategoryColumn[],
+        catIdx: number,
+        categoryFormatter?: valueFormatter.IValueFormatter,
 ): string {
-	return (cats || [])
-		.map((n: DataViewCategoryColumn) => {
-			const category: PrimitiveValue = n.values[catIdx];
+        const usableColumns: DataViewCategoryColumn[] = (cats || []).filter(
+                (column: DataViewCategoryColumn) => {
+                        const roles: any = lodashGet(column, "source.roles");
+                        return !roles || roles.Category;
+                },
+        );
 
-			return categoryFormatter ? categoryFormatter.format(category) : category;
-		})
-		.join(" - ");
+        const columnsToUse: DataViewCategoryColumn[] =
+                usableColumns.length > 0 ? usableColumns : cats || [];
+
+        return columnsToUse
+                .map((n: DataViewCategoryColumn) => {
+                        const category: PrimitiveValue = n.values[catIdx];
+
+                        return categoryFormatter ? categoryFormatter.format(category) : category;
+                })
+                .join(" - ");
 }
 
 /**
  * A utility method to create a slicer item
  */
 export function createItem(
-	category: string,
-	value: string | number | Date,
-	id: string,
-	renderedValue?: string | number,
-	color: string = "",
+        category: string,
+        value: string | number | Date,
+        id: string,
+        renderedValue?: string | number,
+        color: string = "",
+        sortValue?: PrimitiveValue,
 ): ListItem {
-	return {
-		id,
-		text: category,
-		color,
-		value: value || 0,
-		renderedValue,
-	};
+        return {
+                id,
+                text: category,
+                color,
+                value: value || 0,
+                renderedValue,
+                sortValue,
+        };
+}
+
+function columnHasRole(
+        column: DataViewCategoryColumn | undefined,
+        roleName: string,
+): boolean {
+        if (!column) {
+                return false;
+        }
+        return !!lodashGet(column, `source.roles.${roleName}`);
+}
+
+function getColumnsWithRole(
+        columns: DataViewCategoryColumn[],
+        roleName: string,
+): DataViewCategoryColumn[] {
+        return (columns || []).filter(column => columnHasRole(column, roleName));
+}
+
+function getFirstColumnWithRole(
+        columns: DataViewCategoryColumn[],
+        roleName: string,
+): DataViewCategoryColumn | undefined {
+        return (columns || []).find(column => columnHasRole(column, roleName));
 }
 
 export type IConversionSettings = IColorSettings & { reverseBars?: boolean };
