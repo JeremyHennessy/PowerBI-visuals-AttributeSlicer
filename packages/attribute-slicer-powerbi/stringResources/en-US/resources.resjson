@@ -1,0 +1,8 @@
+{
+  "Visual_Name": "Attribute Slicer",
+  "Visual_Description": "Filter records by selecting attribute values with an overview of the most common values.",
+  "DataRole_Category_DisplayName": "Items",
+  "DataRole_Values_DisplayName": "With Values",
+  "DataRole_Series_DisplayName": "Segmented By",
+  "DataRole_Color_DisplayName": "Colored By"
+}

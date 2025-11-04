@@ -19,9 +19,11 @@
       "screenshot": "assets/screenshot.png",
       "thumbnail": "assets/thumbnail.png"
     },
-    "externalJS": null,
+    "externalJS": [],
     "style": "src/css/AttributeSlicerVisual.less",
     "capabilities": "capabilities.json",
     "dependencies": null,
-    "stringResources": []
+    "stringResources": [
+      "stringResources/en-US/resources.resjson"
+    ]
 }

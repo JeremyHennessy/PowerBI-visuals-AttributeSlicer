@@ -3,7 +3,8 @@
         {
             "name": "Category",
             "kind": "Grouping",
-            "displayName": "Items"
+            "displayName": "Items",
+            "displayNameKey": "DataRole_Category_DisplayName"
         },
         {
             "name": "Values",
@@ -16,17 +17,20 @@
                     "integer": true
                 }
             ],
-            "displayName": "With Values"
+            "displayName": "With Values",
+            "displayNameKey": "DataRole_Values_DisplayName"
         },
         {
             "name": "Series",
             "kind": "Grouping",
-            "displayName": "Segmented By"
+            "displayName": "Segmented By",
+            "displayNameKey": "DataRole_Series_DisplayName"
         },
         {
             "name": "Color",
             "kind": "Grouping",
-            "displayName": "Colored By"
+            "displayName": "Colored By",
+            "displayNameKey": "DataRole_Color_DisplayName"
         }
     ],
     "dataViewMappings": [
